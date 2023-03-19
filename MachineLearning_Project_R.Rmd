@@ -1,0 +1,157 @@
+---
+title: "MachineLearning_Project_R"
+author: "Akitha Pinisetti"
+date: "2023-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Assignment 2**
+-------------------------------------------------------------------------------------------
+**Hierarchical Clustering and Association Rule Mining**
+-------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------
+**Association Rule Mining**
+-------------------------------------------------------------------------------------------
+```{r}
+# Load the required libraries
+library(arules)
+library(arulesViz)
+
+# Load the data set
+df <- read.csv("C:/Users/akith/Desktop/Machine Learning/df.csv", stringsAsFactors=TRUE)
+df <- df[,-c(1,3,4,5,7,10,11,12)]
+colnames(df) <- NULL
+write.csv(df, "C:/Users/akith/Desktop/Machine Learning/Record_DF.csv", row.names = FALSE)
+```
+
+```{r}
+ARM = read.transactions("C:/Users/akith/Desktop/Machine Learning/Record_DF.csv", rm.duplicates = TRUE, format = "basket", sep = ",")
+
+
+#Setting support, confidence and calling apriori from arules package
+rules = arules::apriori(ARM, parameter = list(support=.4, confidence=.5, minlen=2))
+inspect(rules)
+```
+
+## Rules based on Confidence
+```{r}
+SortRules_Conf <- sort(rules, by = 'confidence', decreasing = TRUE)
+inspect(SortRules_Conf[1:15])
+```
+## Rules based on Lift
+```{r}
+SortRules_Lift <- sort(rules, by = 'lift', decreasing = TRUE)
+inspect(SortRules_Lift[1:15])
+```
+## Rules based on Support
+```{r}
+SortRules_Sup <- sort(rules, by = 'support', decreasing = TRUE)
+inspect(SortRules_Sup[1:15])
+```
+```{r}
+plot(SortRules_Conf, method="graph", engine="htmlwidget", limit = 15)
+```
+```{r}
+plot(SortRules_Lift, method="graph", engine="htmlwidget", limit = 15)
+```
+```{r}
+plot(SortRules_Sup, method="graph", engine="htmlwidget", limit = 15)
+```
+
+-------------------------------------------------------------------------------------------
+**Hierarchical Clustering**
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## Sampling numeric data
+```{r}
+num_data <- read.csv("C:/Users/akith/Desktop/Machine Learning/num_df.csv")
+num_data$income <- as.factor(num_data$income)
+num_data$income <- ifelse(num_data$income == "<=50K", 0, 1)
+num_data <- subset(num_data, select = -capital.gain)
+sample = num_data[seq(150,200, by = 5),]
+sample_scaled <- scale(sample[,1:5])
+data_transposed <- t(sample_scaled)
+hc <- hclust(dist(data_transposed, method = "euclidean"))
+# Transpose the data
+transposed_df <- t(num_data)
+plot(hc, cex=0.9, hang=-1, main = "Dendrogram using Euclidean")
+```
+
+```{r}
+hc <- hclust(dist(data_transposed, method = "manhattan"))
+# Transpose the data
+transposed_df <- t(num_data)
+plot(hc, cex=0.9, hang=-1, main = "Dendrogram using Manhattan")
+```
+
+```{r}
+hc <- hclust(dist(data_transposed, method = "minkowski"))
+# Transpose the data
+transposed_df <- t(num_data)
+plot(hc, cex=0.9, hang=-1, main = "Dendrogram using Minkowski")
+```
+
+```{r}
+library(lsa)
+
+# compute cosine similarity
+cos_sim <- cosine(data_transposed)
+
+# perform hierarchical clustering using cosine similarity
+hc <- hclust(as.dist(1 - cos_sim), method = "complete")
+
+# plot dendrogram
+plot(hc, main = "Dendrogram using Cosine Similarity")
+```
+
+-------------------------------------------------------------------------------------------
+**Naive Bayes**
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+## Importing libraries
+```{r}
+library(e1071)
+library(caret)
+library(caTools)
+```
+## Splitting the data to train and test
+```{r}
+nb_mixed <- read.csv("C:/Users/akith/Desktop/Machine Learning/dt_mixed.csv")
+nb_mixed<- nb_mixed[,-c(3,5,7,8,9,10,11,13)]
+sample_data = sample.split(nb_mixed, SplitRatio = 0.7)
+train_data <- subset(nb_mixed, sample_data == TRUE)
+test_data <- subset(nb_mixed, sample_data == FALSE)
+```
+
+## Modelling based on naive bayes 
+
+```{r}
+# Define the formula for the model
+formula <- workclass ~ .
+# Create test and train sets and remove labels
+train_data <- nb_mixed[1:150, ]
+test_data <- nb_mixed[151:200, ]
+TrainLabels <- train_data$workclass
+TestLabels <- test_data$workclass
+train_data <- train_data[, -9]
+test_data <- test_data[, -9]
+# Fit the Naive Bayes model
+(NB <- naiveBayes(formula, data = train_data, laplace = 1))
+```
+
+## Predicting the labels
+```{r}
+pred <- predict(NB, test_data, type="class")
+```
+## Confusion matrix for naive bayes   
+```{r}
+conf_matrix <- table(pred,test_data$workclass)
+conf_matrix
+```
+
+```{r}
+accuracy_Test <- sum(diag(conf_matrix)) / sum(conf_matrix)
+accuracy_Test * 100
+```
